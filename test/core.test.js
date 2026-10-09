@@ -1,0 +1,15 @@
+const {test}=require('node:test'); const a=require('node:assert/strict');
+const {vault,Gate,Store}=require('../src/core');
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const cmd={id:'1',channelId:'room',guildId:'guild',author:{id:'admin',bot:false},content:'+r',createdTimestamp:1000};
+const msg={id:'2',channelId:'room',guildId:'guild',author:{id:'995439183650889888'},createdTimestamp:1100,content:'المشاركين : 1',components:[{components:[{type:'BUTTON',label:'دخول',customId:'join',disabled:false}]}]};
+const gate=()=>new Gate({channel:'room',now:()=>1200});
+test('encryption randomized, authenticated and bound to owner',()=>{const v=vault('ab'.repeat(32));const x=v.seal('secret','a');a.equal(v.open(x,'a'),'secret');a.notEqual(x,v.seal('secret','a'));a.throws(()=>v.open(x,'b'));a.throws(()=>vault('cd'.repeat(32)).open(x,'a'));const parts=x.split('.');parts[1]=Buffer.alloc(16).toString('base64');a.throws(()=>v.open(parts.join('.'),'a'));});
+test('any human starter, only configured room and bot; one attempt',()=>{const g=gate();a.equal(g.inspect(msg),null);g.inspect({...cmd,author:{id:'any-member',bot:false}});a.equal(g.inspect({...msg,channelId:'other'}),null);a.equal(g.inspect({...msg,author:{id:'other'}}),null);a.equal(g.inspect(msg),'join');a.equal(g.inspect(msg),null);g.inspect(cmd);a.equal(g.inspect(msg),null);});
+test('disabled button can become enabled on update',()=>{const g=gate();g.inspect(cmd);const m=structuredClone(msg);m.components[0].components[0].disabled=true;a.equal(g.inspect(m),null);a.equal(g.inspect(msg),'join');});
+test('other game, older message, mismatched reply and expired window rejected',()=>{const g=gate();g.inspect(cmd);a.equal(g.inspect({...msg,content:'لعبة أخرى'}),null);a.equal(g.inspect({...msg,createdTimestamp:900}),null);a.equal(g.inspect({...msg,reference:{messageId:'wrong'}}),null);g.now=()=>20000;a.equal(g.inspect(msg),null);});
+test('independent account gates and stop reset',()=>{const x=gate(),y=gate();x.inspect(cmd);a.equal(y.inspect(msg),null);x.reset();a.equal(x.inspect(msg),null);});
+test('encrypted store survives restart, deletion persists',()=>{const dir=fs.mkdtempSync(path.join(os.tmpdir(),'arena-test-'));try{const s=new Store(dir),v=vault('ab'.repeat(32));s.put('a',{token:v.seal('my-private-token','a')});a.equal(fs.readFileSync(s.file,'utf8').includes('my-private-token'),false);a.equal(v.open(new Store(dir).data.a.token,'a'),'my-private-token');s.remove('a');a.equal(new Store(dir).data.a,undefined);}finally{fs.rmSync(dir,{recursive:true,force:true});}});
+
+test('bot commands do not trigger and same registration is not retried',()=>{const g=gate();g.inspect({...cmd,author:{id:'bot',bot:true}});a.equal(g.inspect(msg),null);g.inspect(cmd);a.equal(g.inspect(msg),'join');g.inspect({...cmd,id:'new-command'});a.equal(g.inspect(msg),null);});
+test('participants label in embed works without countdown',()=>{const g=gate();g.inspect(cmd);a.equal(g.inspect({...msg,content:'',embeds:[{title:'المشاركين :',description:'1'}]}),'join');});

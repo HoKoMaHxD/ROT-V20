@@ -1,0 +1,33 @@
+{
+  "scope": "Local Gateway event to mocked HTTP fetch call; no network or Discord win measurement",
+  "node": "v24.19.0",
+  "results": [
+    {
+      "seats": 1,
+      "before": {
+        "samples": 1000,
+        "median_us": 93.57799999997951,
+        "p95_us": 299.31299999998373
+      },
+      "after": {
+        "samples": 1000,
+        "median_us": 35.486999999989166,
+        "p95_us": 128.16099999997732
+      }
+    },
+    {
+      "seats": 5,
+      "before": {
+        "samples": 1000,
+        "median_us": 82.84699999990153,
+        "p95_us": 322.50999999996566
+      },
+      "after": {
+        "samples": 1000,
+        "median_us": 30.8669999999438,
+        "p95_us": 87.03300000001946
+      }
+    }
+  ],
+  "payloadParity": true
+}
